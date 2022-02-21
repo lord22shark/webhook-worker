@@ -2,7 +2,7 @@
  * 0) Import Webhook after configure in package.json -> "webhook-worker": "git://github.com/lord22shark/webhook-worker.git#main"
  */ 
 //const Webhook = require('webhook-worker');
-const Webhook = require('index.js');
+const Webhook = require('./index.js');
 
 /**
  * 1) 
@@ -25,7 +25,7 @@ const Webhook = require('index.js');
 	} catch (whError) {
 
 		console.log(whError);
-		
+
 	}
 
 })();

@@ -100,11 +100,11 @@ class Webhook {
 						workerData: this.data
 					});
 
-					this.worker.once('message', this.onWorkerMessage);
+					this.worker.once('message', this.onWorkerMessage.bind(this));
 
-					this.worker.on('error', this.onWorkerError);
+					this.worker.on('error', this.onWorkerError.bind(this));
 
-					this.worker.on('exit', this.onWorkerExit);
+					this.worker.on('exit', this.onWorkerExit.bind(this));
 
 					this.logger.log(JSON.stringify({
 						level: 'info',

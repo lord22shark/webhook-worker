@@ -17,17 +17,22 @@ async function webhookRequester (__data) {
 
 	} else {
 
-		//console.log('worker', __data.url, __data.tries);
-
 		const wait = (__data.response.length === 0) ? 0 : __data.wait;
 
 		setTimeout(async () => {
+
+			console.log(JSON.stringify({
+				level: 'debug',
+				message: `Webhook Worker for ${__data.request.url} is about to request ${__data.tries} try...`,
+				label: 'webhook-worker',
+				timestamp: new Date().toISOString()
+			}));
 
 			try {
 
 				const response = await axios(__data.request);
 
-				__data.response.push(response);
+				__data.response.push(response.data);
 
 				__data.status.push(response.status);
 
@@ -47,7 +52,7 @@ async function webhookRequester (__data) {
 
 				__data.status.push((responseError) ? responseError.status : 500);
 				
-				__data.response.push((responseError) ? responseError.data : e);
+				__data.response.push((responseError) ? responseError.data : httpError);
 
 				__data.tries -= 1;
 
