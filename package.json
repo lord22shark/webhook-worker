@@ -1,0 +1,13 @@
+{
+  "name": "webhook-worker",
+  "version": "1.0.0",
+  "description": "Webhook running over Worker under axios",
+  "main": "index.js",
+  "repository": "https://github.com/lord22shark/webhook-worker",
+  "author": "Jaime Daniel Corrêa Mendes",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "axios": "^0.26.0"
+  }
+}
