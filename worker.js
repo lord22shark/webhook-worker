@@ -51,7 +51,7 @@ async function webhookRequester (__data) {
 			event: 'logger',
 			data: {
 				level: 'info',
-				message: `Webhook Worker for ${__data.request.url} will request the ${t} attempt in ${wait} seconds...`,
+				message: `Webhook Worker for ${__data.request.url} will request the ${attempt} attempt in ${wait} seconds...`,
 				label: 'webhook-worker',
 				timestamp: new Date().toISOString()
 			}
