@@ -6,27 +6,67 @@ const {parentPort, workerData} = require('worker_threads');
 
 /**
  * 
+ */
+parentPort.on('message', (__message) => {
+
+	const eType = __message.event;
+
+	if (eType) {
+
+		switch (eType) {
+
+			case 'clearTimeout':
+
+				clearTimeout(__message.data);
+
+			break;
+
+		}
+	
+	}
+
+});
+
+/**
+ * 
  */ 
 async function webhookRequester (__data) {
 
 	if (__data.tries === 0) {
 
-		parentPort.postMessage(__data);
+		parentPort.postMessage({
+			event: 'finished',
+			data: __data
+		});
 
 		process.exit(1);
 
 	} else {
 
-		const wait = (__data.response.length === 0) ? 0 : __data.wait;
+		const wait = (__data.response.length === 0) ? 0 : ((__data.wait === null) ? (12500 + (1000 * Math.pow((__data.total - __data.tries), 4))) : __data.wait);
 
-		setTimeout(async () => {
-
-			console.log(JSON.stringify({
-				level: 'debug',
-				message: `Webhook Worker for ${__data.request.url} is about to request ${__data.tries} try...`,
+		parentPort.postMessage({
+			event: 'logger',
+			data: {
+				level: 'info',
+				message: `Webhook Worker for ${__data.request.url} will request the ${__data.tries} try in ${wait} seconds...`,
 				label: 'webhook-worker',
 				timestamp: new Date().toISOString()
-			}));
+			}
+		});
+
+		const timeoutID = setTimeout(async () => {
+
+			parentPort.postMessage({
+				event: 'logger',
+				data: {
+					level: 'info',
+					message: `Webhook Worker for ${__data.request.url} setTimeout thread ID is ${timeoutID._idleStart}`,
+					label: 'webhook-worker',
+					timestamp: new Date().toISOString(),
+					thread: timeoutID._idleStart
+				}
+			});
 
 			try {
 
@@ -40,7 +80,10 @@ async function webhookRequester (__data) {
 
 					__data.success = true;
 
-					parentPort.postMessage(__data);
+					parentPort.postMessage({
+						event: 'finished',
+						data: __data
+					});
 					
 					process.exit(0);
 
@@ -55,6 +98,17 @@ async function webhookRequester (__data) {
 				__data.response.push((responseError) ? responseError.data : httpError);
 
 				__data.tries -= 1;
+
+				parentPort.postMessage({
+					event: 'logger',
+					data: {
+						level: 'info',
+						message: `Webhook Worker for ${__data.request.url} received an error response. Remaining ${__data.tries} tries...`,
+						label: 'webhook-worker',
+						timestamp: new Date().toISOString(),
+						thread: timeoutID._idleStart
+					}
+				});
 
 				await webhookRequester(__data);
 

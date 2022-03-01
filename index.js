@@ -13,26 +13,24 @@ class Webhook {
 
 	static TRIES = 10;
 
-	static WAIT = 10000;
-
 	static TIMEOUT = 10000;
 
 	static LABEL = 'webhook-worker';
 
 	/**
-	 * 
+	 * Callback is for intermediary events. Promise with be return when finished
 	 */ 
-	constructor (__logger, __tries, __wait, __timeout) {
+	constructor (__callback, __logger, __tries, __wait, __timeout) {
 
-		/*if ((!__callback) || (!(__callback instanceof Function))) {
+		if ((__callback) && (!(__callback instanceof Function))) {
 
-			throw new Error('Cannot create a Webhook Worker without a callback function');
+			throw new Error('If you want a callback, it should be a function');
 
 		} else {
 
-			this.callback = __callback;
+			this.callback = __callback || null;
 
-		}*/
+		}
 
 		this.logger = (__logger && __logger.hasOwnProperty('log') && __logger.log instanceof Function) ? __logger : console;
 
@@ -40,9 +38,9 @@ class Webhook {
 
 		this.tries = __tries || Webhook.TRIES;
 
-		this.wait = __wait || Webhook.WAIT;
-		
 		this.timeout = __timeout || Webhook.TIMEOUT;
+		
+		this.wait = __wait || null;
 
 		this.data = null;
 
@@ -50,10 +48,12 @@ class Webhook {
 
 		this.rejecter = null;
 
+		this.worker = null;
+
 	}
 
 	/**
-	 * 
+	 * Returns a Promise
 	 */ 
 	run (__data) {
 
@@ -82,6 +82,7 @@ class Webhook {
 				} else {
 
 					this.data = {
+						total: this.tries,
 						tries: this.tries,
 						wait: this.wait,
 						status: [],
@@ -100,11 +101,11 @@ class Webhook {
 						workerData: this.data
 					});
 
-					this.worker.once('message', this.onWorkerMessage.bind(this));
+					this.worker.on('message', this._onWorkerMessage.bind(this));
 
-					this.worker.on('error', this.onWorkerError.bind(this));
+					this.worker.on('error', this._onWorkerError.bind(this));
 
-					this.worker.on('exit', this.onWorkerExit.bind(this));
+					this.worker.on('exit', this._onWorkerExit.bind(this));
 
 					this.logger.log(JSON.stringify({
 						level: 'info',
@@ -119,28 +120,91 @@ class Webhook {
 
 		}.bind(this));
 
+	}
+
+	/**
+	 * 
+	 */ 
+	terminate () {
+
+		this.worker.terminate();
 
 	}
 
 	/**
 	 * 
 	 */ 
-	onWorkerMessage (__message) {
+	interrupt (__id) {
 
-		this.logger.log(JSON.stringify({
-			level: 'error',
-			message: `Webhook Worker for ${this.data.request.url} received message: ${__message.success === true ? 'SUCCESS!' : 'ERROR!'}`,
-			label: Webhook.LABEL,
-			timestamp: new Date().toISOString()
-		}));
+		if ((!__id) || (typeof(__id) !== 'number')) {
 
-		if (__message.success === true) {
+			throw new Error('clearTimeout requires an integer ID');
 
-			this.resolver(__message);
+		}
+
+		this.worker.postMessage({
+			event: 'clearTimeout',
+			data: __id
+		});
+
+	}
+
+	/**
+	 * 
+	 */ 
+	_onWorkerMessage (__message) {
+
+		const eType = __message.event;
+
+		if (eType) {
+
+			switch (eType) {
+
+				case 'logger':
+
+					this.logger.log(JSON.stringify(__message.data));
+
+					if ((this.callback) && (this.callback instanceof Function)) {
+
+						this.callback.call(this, __message.data);
+
+					}
+
+				break;
+
+				case 'finished':
+
+					this.logger.log(JSON.stringify({
+						level: 'error',
+						message: `Webhook Worker for ${this.data.request.url} received message: ${__message.success === true ? 'SUCCESS!' : 'ERROR!'}`,
+						label: Webhook.LABEL,
+						timestamp: new Date().toISOString()
+					}));
+
+					this.terminate();
+
+					if (__message.success === true) {
+
+						this.resolver(__message);
+
+					} else {
+
+						this.rejecter(__message);
+
+					}
+
+				break;
+
+			}
 
 		} else {
 
-			this.rejecter(__message);
+			this.logger.log(JSON.stringify({
+				level: 'error',
+				message: `Webhook Worker for ${this.data.request.url} received invalid message: ${JSON.stringify(__message)}`,
+				label: Webhook.LABEL,
+				timestamp: new Date().toISOString()
+			}));
 
 		}
 
@@ -149,7 +213,7 @@ class Webhook {
 	/**
 	 * 
 	 */ 
-	onWorkerError (__error) {
+	_onWorkerError (__error) {
 
 		this.logger.log(JSON.stringify({
 			level: 'error',
@@ -165,11 +229,11 @@ class Webhook {
 	/**
 	 * 
 	 */ 
-	onWorkerExit (__exitCode) {
+	_onWorkerExit (__exitCode) {
 
 		this.logger.log(JSON.stringify({
 			level: 'info',
-			message: `Webhook Worker for ${this.data.request.url} exited with ${__exitCode} code`,
+			message: `Webhook Worker for ${this.data.request.url} exited with code "${__exitCode}"`,
 			label: Webhook.LABEL,
 			timestamp: new Date().toISOString()
 		}));
