@@ -43,13 +43,15 @@ async function webhookRequester (__data) {
 
 	} else {
 
-		const wait = (__data.response.length === 0) ? 0 : ((__data.wait === null) ? (12500 + (1000 * Math.pow((__data.total - __data.tries), 4))) : __data.wait);
+		const attempt = (__data.total - __data.tries);
+
+		const wait = (__data.response.length === 0) ? 0 : ((__data.wait === null) ? (12500 + (1000 * Math.pow(attempt, 4))) : __data.wait);
 
 		parentPort.postMessage({
 			event: 'logger',
 			data: {
 				level: 'info',
-				message: `Webhook Worker for ${__data.request.url} will request the ${__data.tries} try in ${wait} seconds...`,
+				message: `Webhook Worker for ${__data.request.url} will request the ${t} attempt in ${wait} seconds...`,
 				label: 'webhook-worker',
 				timestamp: new Date().toISOString()
 			}
@@ -103,7 +105,7 @@ async function webhookRequester (__data) {
 					event: 'logger',
 					data: {
 						level: 'info',
-						message: `Webhook Worker for ${__data.request.url} received an error response. Remaining ${__data.tries} tries...`,
+						message: `Webhook Worker for ${__data.request.url} received an error response. Remaining ${__data.tries} attempts...`,
 						label: 'webhook-worker',
 						timestamp: new Date().toISOString(),
 						thread: timeoutID._idleStart

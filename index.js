@@ -176,7 +176,7 @@ class Webhook {
 
 					this.logger.log(JSON.stringify({
 						level: 'error',
-						message: `Webhook Worker for ${this.data.request.url} received message: ${__message.success === true ? 'SUCCESS!' : 'ERROR!'}`,
+						message: `Webhook Worker for ${this.data.request.url} received message: ${__message.data.success === true ? 'SUCCESS!' : 'ERROR!'}`,
 						label: Webhook.LABEL,
 						timestamp: new Date().toISOString()
 					}));
@@ -185,11 +185,11 @@ class Webhook {
 
 					if (__message.success === true) {
 
-						this.resolver(__message);
+						this.resolver(__message.data);
 
 					} else {
 
-						this.rejecter(__message);
+						this.rejecter(__message.data);
 
 					}
 
@@ -233,7 +233,7 @@ class Webhook {
 
 		this.logger.log(JSON.stringify({
 			level: 'info',
-			message: `Webhook Worker for ${this.data.request.url} exited with code "${__exitCode}"`,
+			message: `Webhook Worker for ${this.data.request.url} exited with code ${__exitCode}`,
 			label: Webhook.LABEL,
 			timestamp: new Date().toISOString()
 		}));
