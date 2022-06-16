@@ -183,7 +183,7 @@ class Webhook {
 
 					this.terminate();
 
-					if (__message.success === true) {
+					if (__message.data.success === true) {
 
 						this.resolver(__message.data);
 
