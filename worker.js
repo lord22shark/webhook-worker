@@ -45,12 +45,12 @@ async function webhookRequester (__data) {
 
 		const attempt = (__data.total - __data.tries);
 
-		const wait = (__data.response.length === 0) ? 0 : ((__data.wait === null) ? (12500 + (1000 * Math.pow(attempt, 4))) : __data.wait);
+		const wait = (__data.response.length === 0) ? 0 : ((__data.wait === null) ? (1250 + (1000 * Math.pow(attempt, 4))) : __data.wait);
 
 		parentPort.postMessage({
 			event: 'logger',
 			data: {
-				level: 'info',
+				level: 'INFO',
 				message: `Webhook Worker for ${__data.request.url} will request the ${attempt} attempt in ${wait} seconds...`,
 				label: 'webhook-worker',
 				timestamp: new Date().toISOString()
@@ -62,7 +62,7 @@ async function webhookRequester (__data) {
 			parentPort.postMessage({
 				event: 'logger',
 				data: {
-					level: 'info',
+					level: 'INFO',
 					message: `Webhook Worker for ${__data.request.url} setTimeout thread ID is ${timeoutID._idleStart}`,
 					label: 'webhook-worker',
 					timestamp: new Date().toISOString(),
@@ -74,7 +74,45 @@ async function webhookRequester (__data) {
 
 				const response = await axios(__data.request);
 
-				__data.response.push(response.data);
+				let body = null;
+
+				if (typeof(response.data) === 'object') {
+
+					body = response.data;
+
+				} else {
+
+					let header = null;
+
+					for (const key of ['Content-Type', 'content-type', 'Content-type']) {
+
+						if ((response.headers.hasOwnProperty(key)) && (response.headers[key])) {
+
+							header = response.headers[key];
+
+							break;
+
+						}
+
+					}
+
+					if (header === 'application/json') {
+
+						try {
+
+							body = JSON.parse(response.data);
+
+						} catch (parseError) {
+
+							body = response.data;
+
+						}
+
+					}
+
+				}
+
+				__data.response.push(body);
 
 				__data.status.push(response.status);
 
@@ -104,11 +142,12 @@ async function webhookRequester (__data) {
 				parentPort.postMessage({
 					event: 'logger',
 					data: {
-						level: 'info',
+						level: 'ERROR',
 						message: `Webhook Worker for ${__data.request.url} received an error response. Remaining ${__data.tries} attempts...`,
 						label: 'webhook-worker',
 						timestamp: new Date().toISOString(),
-						thread: timeoutID._idleStart
+						thread: timeoutID._idleStart,
+						error: (responseError) ? responseError.data : httpError.toString()
 					}
 				});
 

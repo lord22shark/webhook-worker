@@ -108,7 +108,7 @@ class Webhook {
 					this.worker.on('exit', this._onWorkerExit.bind(this));
 
 					this.logger.log(JSON.stringify({
-						level: 'info',
+						level: 'NOTICE',
 						message: `Webhook Worker started for ${this.data.request.url}`,
 						label: Webhook.LABEL,
 						timestamp: new Date().toISOString()
@@ -174,16 +174,19 @@ class Webhook {
 
 				case 'finished':
 
+					const isSuccess = __message.data.success === true;
+
 					this.logger.log(JSON.stringify({
-						level: 'error',
-						message: `Webhook Worker for ${this.data.request.url} received message: ${__message.data.success === true ? 'SUCCESS!' : 'ERROR!'}`,
+						level: (isSuccess) ? 'NOTICE' : 'ERROR',
+						message: `Webhook Worker for ${this.data.request.url} is finished and received ${isSuccess ? 'SUCCESS' : 'ERROR'} message.`,
 						label: Webhook.LABEL,
-						timestamp: new Date().toISOString()
+						timestamp: new Date().toISOString(),
+						data: __message.data
 					}));
 
 					this.terminate();
 
-					if (__message.data.success === true) {
+					if (isSuccess === true) {
 
 						this.resolver(__message.data);
 
@@ -200,7 +203,7 @@ class Webhook {
 		} else {
 
 			this.logger.log(JSON.stringify({
-				level: 'error',
+				level: 'ERROR',
 				message: `Webhook Worker for ${this.data.request.url} received invalid message: ${JSON.stringify(__message)}`,
 				label: Webhook.LABEL,
 				timestamp: new Date().toISOString()
@@ -216,7 +219,7 @@ class Webhook {
 	_onWorkerError (__error) {
 
 		this.logger.log(JSON.stringify({
-			level: 'error',
+			level: 'ERROR',
 			message: `Webhook Worker for ${this.data.request.url} raise an error: ${__error.toString()}`,
 			label: Webhook.LABEL,
 			timestamp: new Date().toISOString()
@@ -232,7 +235,7 @@ class Webhook {
 	_onWorkerExit (__exitCode) {
 
 		this.logger.log(JSON.stringify({
-			level: 'info',
+			level: 'NOTICE',
 			message: `Webhook Worker for ${this.data.request.url} exited with code ${__exitCode}`,
 			label: Webhook.LABEL,
 			timestamp: new Date().toISOString()
