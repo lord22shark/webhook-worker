@@ -5,6 +5,11 @@ const {Worker, isMainThread, workerData} = require('worker_threads');
 const path = require('path');
 
 /**
+ * Note for Default Logging Messages:
+ * id, level, message, label, timestamp, payload
+ */ 
+
+/**
  * 
  */ 
 class Webhook {
@@ -55,7 +60,7 @@ class Webhook {
 	/**
 	 * Returns a Promise
 	 */ 
-	run (__data) {
+	run (__id, __data) {
 
 		return new Promise(function (resolve, reject) {
 
@@ -63,56 +68,67 @@ class Webhook {
 
 			this.rejecter = reject;
 
-			if ((!__data) || (!(__data instanceof Object))) {
+			if ((!__id) || (typeof(__id) !== 'string')) {
 
-				reject(new Error('We need data to start a Webhook Worker!'));
+				reject(new Error('We need an identifier to start a Webhook Worker!'));
 
 			} else {
 
-				const allset = ['url', 'method', 'data'].reduce((previous, current) => {
+				if ((!__data) || (!(__data instanceof Object))) {
 
-					return previous && !!__data[current];
-
-				}, true);
-
-				if (!allset) {
-
-					reject(new Error('To init a Webhook Worker we data an object with axios request properties... at least URL, METHOD and DATA!'));
+					reject(new Error('We need data to start a Webhook Worker!'));
 
 				} else {
 
-					this.data = {
-						total: this.tries,
-						tries: this.tries,
-						wait: this.wait,
-						status: [],
-						response: [],
-						request: __data,
-						success: false
-					};
+					const allset = ['url', 'method', 'data'].reduce((previous, current) => {
 
-					if (!__data.hasOwnProperty('timeout')) {
+						return previous && !!__data[current];
 
-						__data.timeout = this.timeout;
+					}, true);
+
+					if (!allset) {
+
+						reject(new Error('To init a Webhook Worker we data an object with axios request properties... at least URL, METHOD and DATA!'));
+
+					} else {
+
+						this.data = {
+							total: this.tries,
+							tries: this.tries,
+							wait: this.wait,
+							status: [],
+							response: [],
+							request: __data,
+							id: __id, 
+							success: false
+						};
+
+						if (!__data.hasOwnProperty('timeout')) {
+
+							__data.timeout = this.timeout;
+
+						}
+
+						this.worker = new Worker(this.filename, {
+							workerData: this.data
+						});
+
+						this.worker.on('message', this._onWorkerMessage.bind(this));
+
+						this.worker.on('error', this._onWorkerError.bind(this));
+
+						this.worker.on('exit', this._onWorkerExit.bind(this));
+
+						this.logger.log({
+							id: __id,
+							level: 'NOTICE',
+							message: `Webhook Worker started for ${this.data.request.url} concerning ${__id}`,
+							label: Webhook.LABEL,
+							timestamp: new Date().toISOString(),
+							payload: this.data
+						});
 
 					}
-
-					this.worker = new Worker(this.filename, {
-						workerData: this.data
-					});
-
-					this.worker.on('message', this._onWorkerMessage.bind(this));
-
-					this.worker.on('error', this._onWorkerError.bind(this));
-
-					this.worker.on('exit', this._onWorkerExit.bind(this));
-
-					this.logger.log(JSON.stringify({
-						level: 'NOTICE',
-						message: `Webhook Worker started for ${this.data.request.url}`,
-						label: Webhook.LABEL,
-						timestamp: new Date().toISOString()
-					}));
 
 				}
 
@@ -162,7 +178,9 @@ class Webhook {
 
 				case 'logger':
 
-					this.logger.log(JSON.stringify(__message.data));
+					// __message.data comes with the same pattern as event "finished" (ilmltp)
+
+					this.logger.log(__message.data);
 
 					if ((this.callback) && (this.callback instanceof Function)) {
 
@@ -176,13 +194,14 @@ class Webhook {
 
 					const isSuccess = __message.data.success === true;
 
-					this.logger.log(JSON.stringify({
+					this.logger.log({
+						id: __message.data.id,
 						level: (isSuccess) ? 'NOTICE' : 'ERROR',
-						message: `Webhook Worker for ${this.data.request.url} is finished and received ${isSuccess ? 'SUCCESS' : 'ERROR'} message.`,
+						message: `Webhook Worker for ${this.data.request.url} concerning ${__message.data.id} is finished and received ${isSuccess ? 'SUCCESS' : 'ERROR'} message.`,
 						label: Webhook.LABEL,
 						timestamp: new Date().toISOString(),
-						data: __message.data
-					}));
+						payload: __message.data
+					});
 
 					this.terminate();
 
@@ -202,12 +221,14 @@ class Webhook {
 
 		} else {
 
-			this.logger.log(JSON.stringify({
+			this.logger.log({
+				id: null,
 				level: 'ERROR',
-				message: `Webhook Worker for ${this.data.request.url} received invalid message: ${JSON.stringify(__message)}`,
+				message: `Webhook Worker for ${this.data.request.url} received invalid message (payload)`,
 				label: Webhook.LABEL,
-				timestamp: new Date().toISOString()
-			}));
+				timestamp: new Date().toISOString(),
+				payload: __message
+			});
 
 		}
 
@@ -218,12 +239,14 @@ class Webhook {
 	 */ 
 	_onWorkerError (__error) {
 
-		this.logger.log(JSON.stringify({
+		this.logger.log({
+			id: null,
 			level: 'ERROR',
-			message: `Webhook Worker for ${this.data.request.url} raise an error: ${__error.toString()}`,
+			message: `Webhook Worker for ${this.data.request.url} raise an internal error (payload)`,
 			label: Webhook.LABEL,
-			timestamp: new Date().toISOString()
-		}));
+			timestamp: new Date().toISOString(),
+			payload: __error
+		});
 
 		this.rejecter(__error);
 
@@ -234,12 +257,14 @@ class Webhook {
 	 */ 
 	_onWorkerExit (__exitCode) {
 
-		this.logger.log(JSON.stringify({
+		this.logger.log({
+			id: null,
 			level: 'NOTICE',
 			message: `Webhook Worker for ${this.data.request.url} exited with code ${__exitCode}`,
 			label: Webhook.LABEL,
-			timestamp: new Date().toISOString()
-		}));
+			timestamp: new Date().toISOString(),
+			payload: __exitCode
+		});
 
 	}
 

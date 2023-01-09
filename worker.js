@@ -50,10 +50,12 @@ async function webhookRequester (__data) {
 		parentPort.postMessage({
 			event: 'logger',
 			data: {
+				id: __data.id,
 				level: 'INFO',
-				message: `Webhook Worker for ${__data.request.url} will request the ${attempt} attempt in ${wait} seconds...`,
+				message: `Webhook Worker for ${__data.request.url} concerning ${__data.id} will request the ${attempt} attempt in ${wait} seconds...`,
 				label: 'webhook-worker',
-				timestamp: new Date().toISOString()
+				timestamp: new Date().toISOString(),
+				payload: null
 			}
 		});
 
@@ -62,11 +64,12 @@ async function webhookRequester (__data) {
 			parentPort.postMessage({
 				event: 'logger',
 				data: {
+					id: __data.id,
 					level: 'INFO',
-					message: `Webhook Worker for ${__data.request.url} setTimeout thread ID is ${timeoutID._idleStart}`,
+					message: `Webhook Worker for ${__data.request.url} concerning ${__data.id} setTimeout thread ID is ${timeoutID._idleStart}`,
 					label: 'webhook-worker',
 					timestamp: new Date().toISOString(),
-					thread: timeoutID._idleStart
+					payload: timeoutID._idleStart
 				}
 			});
 
@@ -142,12 +145,15 @@ async function webhookRequester (__data) {
 				parentPort.postMessage({
 					event: 'logger',
 					data: {
+						id: __data.id,
 						level: 'ERROR',
-						message: `Webhook Worker for ${__data.request.url} received an error response. Remaining ${__data.tries} attempts...`,
+						message: `Webhook Worker for ${__data.request.url} concerning ${__data.id} received an error response. Remaining ${__data.tries} attempts...`,
 						label: 'webhook-worker',
 						timestamp: new Date().toISOString(),
-						thread: timeoutID._idleStart,
-						error: (responseError) ? responseError.data : httpError.toString()
+						payload: {
+							thread: timeoutID._idleStart,
+							error: (responseError) ? responseError.data : httpError.toString()
+						}
 					}
 				});
 

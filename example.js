@@ -13,15 +13,15 @@ const Webhook = require('./index.js');
 
 		const c = new Webhook(null, {log: (message) => {
 
-			const parsed = JSON.parse(message);
+			//const parsed = JSON.parse(message);
 
-			console.log(parsed);
+			console.log(message);
 
 		}}, 4, 10000, 5555);
 
-		const output = await c.run({
+		const output = await c.run('84a22349-0d92-4951-9a3a-7cf8ee12add5', {
 			method: 'POST',
-			url: 'http://localhost:7000/index.php',
+			url: 'http://127.0.0.1:7000/index.php',
 			data: JSON.stringify({
 				a: 1,
 				b: true,
